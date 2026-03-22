@@ -1,0 +1,208 @@
+newsletter:
+  title: "Pharma Regulatory Pulse"
+  subtitle: "Your Weekly Briefing on Pharmaceutical Guidelines & Regulatory Developments"
+
+  # Topics organised by disease state — 14 categories, 2 topics each.
+  # Topic 1 per category targets clinical trial regulatory milestones.
+  # Topic 2 per category targets guideline/guidance updates.
+  # 14 categories × 2 topics × 3 articles = 84 max articles before dedup.
+  topic_categories:
+    renal_liver:
+      - "renal kidney liver hepatic disease clinical trial IND NDA BLA FDA regulatory"
+      - "renal kidney liver hepatic disease FDA EMA guideline guidance pharmaceutical"
+
+    infectious_disease:
+      - "infectious disease antibiotic antiviral antifungal HIV RSV clinical trial FDA regulatory"
+      - "infectious disease antimicrobial resistance antibiotic FDA EMA guideline guidance pharmaceutical"
+
+    cardiovascular:
+      - "cardiovascular heart disease hypertension arrhythmia heart failure clinical trial FDA regulatory"
+      - "cardiovascular heart disease hypertension FDA EMA guideline guidance pharmaceutical"
+
+    anticoagulation_blood:
+      - "anticoagulation blood disorder hematology thrombosis anemia sickle cell clinical trial FDA"
+      - "anticoagulation blood disorder hematology thrombosis FDA EMA guideline guidance pharmaceutical"
+
+    eyes_ears_nose_skin:
+      - "ophthalmology dermatology otology nasal ear eye skin retina clinical trial FDA regulatory"
+      - "ophthalmology dermatology ear nose skin FDA EMA guideline guidance pharmaceutical"
+
+    pulmonary_tobacco:
+      - "pulmonary respiratory COPD asthma tobacco smoking cessation clinical trial FDA regulatory"
+      - "pulmonary respiratory COPD asthma tobacco cessation FDA EMA guideline guidance pharmaceutical"
+
+    endocrine:
+      - "endocrine diabetes thyroid adrenal pituitary hormone metabolic clinical trial FDA regulatory"
+      - "endocrine diabetes thyroid adrenal hormone FDA EMA guideline guidance pharmaceutical"
+
+    male_female_health:
+      - "reproductive health women men hormonal contraception fertility menopause testosterone clinical trial FDA"
+      - "reproductive health women men contraception fertility menopause FDA EMA guideline guidance pharmaceutical"
+
+    special_populations:
+      - "obesity weight loss transplant pediatric neonatal rare disease clinical trial FDA regulatory"
+      - "obesity weight loss transplant pediatric FDA EMA guideline guidance pharmaceutical"
+
+    pain_migraine_gout:
+      - "pain analgesic migraine gout opioid NSAID clinical trial FDA regulatory"
+      - "pain migraine gout analgesic opioid FDA EMA guideline guidance pharmaceutical"
+
+    oncology:
+      - "oncology cancer tumor hematologic malignancy clinical trial IND NDA BLA breakthrough FDA regulatory"
+      - "oncology cancer FDA EMA guideline guidance pharmaceutical approval CHMP"
+
+    psychiatric:
+      - "psychiatric depression anxiety schizophrenia bipolar ADHD clinical trial FDA regulatory"
+      - "psychiatric mental health depression anxiety FDA EMA guideline guidance pharmaceutical"
+
+    neurologic:
+      - "neurology Alzheimer Parkinson multiple sclerosis epilepsy ALS clinical trial FDA regulatory"
+      - "neurology Alzheimer Parkinson multiple sclerosis FDA EMA guideline guidance pharmaceutical"
+
+    gastrointestinal:
+      - "gastrointestinal IBD Crohn colitis IBS hepatitis GERD clinical trial FDA regulatory"
+      - "gastrointestinal IBD Crohn hepatitis GERD FDA EMA guideline guidance pharmaceutical"
+
+  max_articles_per_topic: 3    # 14 categories × 2 topics × 3 = 84 max before dedup
+  min_articles_to_publish: 3   # Abort cleanly if fewer than this survive dedup
+
+  tone: >
+    Authoritative regulatory affairs professional. Precise, factual, neutral.
+    Use proper regulatory terminology (e.g., 'PDUFA target action date' not
+    'approval deadline'). Reference specific guideline document numbers when
+    available (e.g., 'FDA Guidance for Industry, Docket No. FDA-2024-D-XXXX').
+    No marketing language, no superlatives, no speculation on commercial impact.
+
+  audience: >
+    Pharmaceutical regulatory affairs professionals, QA/QC managers, medical
+    affairs teams, pharmacovigilance specialists, and compliance officers at
+    pharma/biotech companies. Assume deep domain knowledge — do not explain
+    basic regulatory concepts (NDA, BLA, 505(b)(2), ANDA, etc.).
+
+  # Model split: writer for synthesis/QA, worker for bulk normalization/ranking
+  model_writer: "gpt-5.4-mini"     # planning, synthesis, enrichment, QA
+  model_worker: "gpt-5.4-nano"     # normalization, dedup scoring, ranking
+  temperature: 0.2    # Lower than typical — regulatory content demands precision
+  max_tokens: 5000
+
+sources:
+  tavily: true           # PRIMARY: LLM-optimised search (requires TAVILY_API_KEY)
+  google_news_rss: true  # TERTIARY: broad coverage supplement
+  openfda: true          # ENRICHMENT: FDA enforcement/recall structured data
+  pubmed: true           # ENRICHMENT: peer-reviewed regulatory literature
+  clinicaltrials: true   # ENRICHMENT: clinical trial designation milestones
+
+  # Guideline hub domains — mapped per disease category.
+  # For each category's guideline search (2nd topic), Tavily is directed to
+  # include_domains so results come from authoritative society sources.
+  # A 30-day lookback is used (vs. 7-day for clinical trial searches) because
+  # clinical guidelines update infrequently but when they do it matters.
+  guideline_hub_domains:
+    renal_liver:
+      - "kdigo.org"                 # KDIGO — Kidney Disease: Improving Global Outcomes
+    infectious_disease:
+      - "idsociety.org"             # IDSA — Infectious Diseases Society of America
+      - "survivingsepsis.org"       # Surviving Sepsis Campaign
+      - "clinicalinfo.hiv.gov"      # HHS HIV guidelines
+    cardiovascular:
+      - "acc.org"                   # American College of Cardiology
+      - "heart.org"                 # American Heart Association
+    anticoagulation_blood:
+      - "chestnet.org"              # American College of Chest Physicians (ACCP)
+      - "hematology.org"            # American Society of Hematology (ASH)
+    eyes_ears_nose_skin:
+      - "aad.org"                   # American Academy of Dermatology
+    pulmonary_tobacco:
+      - "ginasthma.org"             # Global Initiative for Asthma (GINA)
+      - "goldcopd.org"              # Global Initiative for COPD (GOLD)
+      - "thoracic.org"              # American Thoracic Society (ATS)
+    endocrine:
+      - "diabetes.org"              # American Diabetes Association (ADA)
+      - "aace.com"                  # American Association of Clinical Endocrinology
+    male_female_health:
+      - "acog.org"                  # American College of Obstetricians and Gynecologists
+      - "auanet.org"                # American Urological Association
+    special_populations:
+      - "aap.org"                   # American Academy of Pediatrics
+      - "acog.org"                  # ACOG (obstetric/pregnancy guidance)
+    pain_migraine_gout:
+      - "cdc.gov"                   # CDC Pain guidelines
+      - "rheumatology.org"          # American College of Rheumatology (gout)
+    oncology:
+      - "nccn.org"                  # National Comprehensive Cancer Network
+    psychiatric:
+      - "psychiatry.org"            # American Psychiatric Association
+    neurologic:
+      - "aan.com"                   # American Academy of Neurology
+    gastrointestinal:
+      - "gi.org"                    # American College of Gastroenterology
+
+scoring:
+  enabled: true
+  min_score: 2.0         # Drop articles scoring below this (0–10 scale)
+  max_articles: 40       # Cap articles sent to synthesis (limits token budget)
+
+  # Pharmaceutical-specific RSS feeds
+  pharma_rss_feeds:
+    # FDA Official Feeds
+    - url: "https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/drugs/rss.xml"
+      name: "FDA Drugs — What's New"
+      source_type: "rss_fda"
+    - url: "https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/drug-safety/rss.xml"
+      name: "FDA Drug Safety Communications"
+      source_type: "rss_fda"
+    - url: "https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/drug-approvals-and-databases/rss.xml"
+      name: "FDA Drug Approvals & Databases"
+      source_type: "rss_fda"
+    - url: "https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/biologics/rss.xml"
+      name: "FDA Biologics"
+      source_type: "rss_fda"
+
+    # Industry News Feeds
+    - url: "https://www.drugs.com/feeds/fda-alerts.xml"
+      name: "Drugs.com FDA Alerts"
+      source_type: "rss_industry"
+    - url: "https://www.drugs.com/feeds/new-drug-approvals.xml"
+      name: "Drugs.com New Drug Approvals"
+      source_type: "rss_industry"
+    - url: "https://www.drugs.com/feeds/new-drug-applications.xml"
+      name: "Drugs.com New Drug Applications"
+      source_type: "rss_industry"
+
+    # EMA Feeds
+    - url: "https://www.ema.europa.eu/en/rss/document/field_ema_web_categories%253Aname_field/Human/field_ema_document_category/rss.xml"
+      name: "EMA Human Medicines"
+      source_type: "rss_ema"
+
+  # openFDA API search terms
+  openfda_searches:
+    - endpoint: "drug/enforcement"
+      query: "recall"
+      description: "FDA Drug Enforcement / Recalls"
+    - endpoint: "drug/label"
+      query: "boxed warning"
+      description: "Drug Label Changes — Boxed Warnings"
+
+  # PubMed search terms
+  pubmed_queries:
+    - "FDA guidance pharmaceutical regulatory[tiab]"
+    - "EMA marketing authorization pharmaceutical[tiab]"
+    - "ICH harmonization guideline pharmaceutical[tiab]"
+    - "drug approval regulatory affairs[tiab]"
+
+  # ClinicalTrials.gov status filters
+  clinicaltrials_queries:
+    - "Breakthrough Therapy"
+    - "Fast Track"
+    - "Priority Review"
+
+email:
+  provider: "smtp"                      # Using Gmail SMTP for test — no domain verification needed
+  from: "nicklosee.nl@gmail.com"
+  reply_to: "nicklosee.nl@gmail.com"
+  subject_template: "Pharma Regulatory Pulse — Week of {date}"
+  recipients_csv: "subscribers.csv"
+
+  # SMTP settings — credentials loaded from SMTP_* env vars in .env
+  smtp_host: "smtp.gmail.com"
+  smtp_port: 587

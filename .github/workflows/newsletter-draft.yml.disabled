@@ -1,0 +1,73 @@
+name: "Pharma Regulatory Pulse — 1/2: Generate Draft"
+
+# Phase 1: Runs automatically every Monday morning.
+# Generates the newsletter draft and commits it to drafts/ for human review.
+# Does NOT send any emails.
+# After reviewing the draft, trigger "newsletter-send.yml" manually to approve.
+
+on:
+  schedule:
+    # Every Monday at 2 PM UTC (7 AM PT / 10 AM ET)
+    - cron: '0 14 * * 1'
+
+  workflow_dispatch:
+    inputs:
+      passes:
+        description: 'Monte Carlo synthesis passes (default: 3, use 1 for quick test)'
+        required: false
+        default: '3'
+        type: string
+
+jobs:
+  generate-draft:
+    name: Generate Newsletter Draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate draft (no sending)
+        run: python main.py --draft-only --passes ${{ github.event.inputs.passes || '3' }}
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL:   ${{ secrets.OPENAI_MODEL }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          OPENFDA_API_KEY: ${{ secrets.OPENFDA_API_KEY }}
+          PUBMED_API_KEY:  ${{ secrets.PUBMED_API_KEY }}
+
+      # Update the generation log (prevents 60-day inactivity auto-disable)
+      - name: Update generation log
+        run: |
+          echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') — Draft generated (passes: ${{ github.event.inputs.passes || '3' }})" >> generation_log.txt
+
+      # Commit the draft + log so editors can review before approving send
+      - name: Commit draft for review
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "📄 Draft newsletter — $(date -u '+%Y-%m-%d') [review before sending]"
+          file_pattern: "drafts/ generation_log.txt"
+          commit_user_name: "Pharma Pulse Bot"
+          commit_user_email: "actions@github.com"
+
+      - name: Notify reviewers
+        run: |
+          echo ""
+          echo "✅ Draft committed to drafts/$(date -u '+%Y-%m-%d').md"
+          echo ""
+          echo "To send this newsletter, go to:"
+          echo "  Actions → Pharma Regulatory Pulse — 2/2: Send Approved Draft → Run workflow"
+          echo ""

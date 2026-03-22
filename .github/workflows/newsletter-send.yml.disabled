@@ -1,0 +1,81 @@
+name: "Pharma Regulatory Pulse — 2/2: Send Approved Draft"
+
+# Phase 2: Human-triggered send.
+# ONLY runs when manually dispatched — never automatically.
+# The editor reviews the draft in drafts/YYYY-MM-DD.md, optionally edits it,
+# commits their changes, then triggers this workflow to format and send.
+#
+# This is the human-in-the-loop approval gate recommended by the artifact as
+# the defining trait of production-grade newsletter systems.
+
+on:
+  workflow_dispatch:
+    inputs:
+      draft_date:
+        description: 'Draft date to send (YYYY-MM-DD, leave blank for today)'
+        required: false
+        default: ''
+        type: string
+      dry_run:
+        description: 'Dry run — format to HTML but do not send emails'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  send-newsletter:
+    name: Send Approved Newsletter
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Determine draft to send
+        id: draft
+        run: |
+          DATE="${{ github.event.inputs.draft_date }}"
+          if [ -z "$DATE" ]; then
+            DATE=$(date -u '+%Y-%m-%d')
+          fi
+          DRAFT_PATH="drafts/${DATE}.md"
+          if [ ! -f "$DRAFT_PATH" ]; then
+            echo "❌ Draft not found: $DRAFT_PATH"
+            echo "Available drafts:"
+            ls drafts/ 2>/dev/null || echo "  (none)"
+            exit 1
+          fi
+          echo "Sending draft: $DRAFT_PATH"
+          echo "draft_path=$DRAFT_PATH" >> "$GITHUB_OUTPUT"
+          echo "draft_date=$DATE" >> "$GITHUB_OUTPUT"
+
+      - name: Send newsletter from approved draft
+        run: python send_draft.py "${{ steps.draft.outputs.draft_path }}" ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+
+      - name: Update log after send
+        run: |
+          echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') — Sent: ${{ steps.draft.outputs.draft_path }} (dry_run: ${{ github.event.inputs.dry_run || 'false' }})" >> generation_log.txt
+
+      - name: Commit send log
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "📬 Newsletter sent — ${{ steps.draft.outputs.draft_date }}"
+          file_pattern: "generation_log.txt"
+          commit_user_name: "Pharma Pulse Bot"
+          commit_user_email: "actions@github.com"
