@@ -2,9 +2,24 @@
 
 **Automated weekly newsletter for pharmaceutical regulatory affairs professionals.**
 
+
+
 Monitors FDA guidances, drug approvals, EMA decisions, ICH harmonization updates, enforcement actions, and clinical trial milestones — then synthesizes them into a professional HTML email newsletter delivered every Monday morning.
 
----
+**---
+
+**Topics covered by the newsletter**
+
+- FDA new drug approvals and PDUFA decisions
+- FDA draft and final pharmaceutical guidance
+- FDA drug safety warnings and labeling changes
+- EMA CHMP opinions and marketing authorizations
+- ICH guideline and harmonization updates
+- FDA warning letters and inspection activity
+- Clinical trial regulatory changes
+- Biosimilar and interchangeability guidance
+- Compliance, GMP, and enforcement developments
+- Upcoming dates to watch such as comment deadlines and advisory meetings
 
 ## What It Does
 
@@ -14,6 +29,18 @@ Monitors FDA guidances, drug approvals, EMA decisions, ICH harmonization updates
 4. **Formats** — MJML renders a responsive, inbox-compatible HTML email with pharma-blue branding
 5. **Delivers** — Resend (or SMTP) sends to all subscribers in `subscribers.csv`
 6. **Archives** — Saves each newsletter as `drafts/YYYY-MM-DD.md` for audit trail
+
+## Core tech and main ideas
+- Automated weekly pharma regulatory newsletter
+- Focus on FDA, EMA, ICH, safety, approvals, inspections, and compliance
+- AI-assisted synthesis grounded only in collected sources
+- Deduplication using TF-IDF and cosine similarity
+- Responsive email generation with MJML
+- Delivery through Resend
+- GitHub Actions scheduling and automation
+- Draft archiving and audit trail
+- Dry-run and draft-only modes for testing
+- Accuracy-first design with citations, retries, and low-temperature model settings
 
 ---
 
