@@ -5,7 +5,9 @@
 
 
 Monitors FDA guidances, drug approvals, EMA decisions, ICH harmonization updates, enforcement actions, and clinical trial milestones — then synthesizes them into a professional HTML email newsletter delivered every Monday morning.
-
+<p align="Left">
+  <img src="./ExampleOutputNewsletter.png" alt="Example Newsletter" />
+</p>
 **---
 
 **Topics covered by the newsletter**
@@ -30,6 +32,11 @@ Monitors FDA guidances, drug approvals, EMA decisions, ICH harmonization updates
 5. **Delivers** — Resend (or SMTP) sends to all subscribers in `subscribers.csv`
 6. **Archives** — Saves each newsletter as `drafts/YYYY-MM-DD.md` for audit trail
 
+<p align="center">
+  <img src="./Slides/ContextDiagram.png" alt="System context diagram" width="900" />
+</p>
+
+
 ## Core tech and main ideas
 - Automated weekly pharma regulatory newsletter
 - Focus on FDA, EMA, ICH, safety, approvals, inspections, and compliance
@@ -41,7 +48,14 @@ Monitors FDA guidances, drug approvals, EMA decisions, ICH harmonization updates
 - Draft archiving and audit trail
 - Dry-run and draft-only modes for testing
 - Accuracy-first design with citations, retries, and low-temperature model settings
+  
+<p align="center">
+  <img src="./Slides/KeyDesignDecisions.png" alt="System context diagram" width="900" />
+</p>
 
+<p align="center">
+  <img src="./Slides/Tradeoffs.png" alt="System context diagram" width="900" />
+</p>
 ---
 
 ## Quick Start
