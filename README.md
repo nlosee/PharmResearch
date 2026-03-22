@@ -5,8 +5,8 @@
 
 
 Monitors FDA guidances, drug approvals, EMA decisions, ICH harmonization updates, enforcement actions, and clinical trial milestones — then synthesizes them into a professional HTML email newsletter delivered every Monday morning.
-<p align="Left">
-  <img src="./ExampleOutputNewsletter.png" alt="Example Newsletter" />
+<p align="center">
+  <img src="./Slides/ExampleOutputNewsletter.png" alt="Example newsletter output" width="600" />
 </p>
 **---
 
