@@ -36,3 +36,6 @@ htmlcov/
 # Drafts are committed intentionally (audit trail)
 # but exclude large outputs if needed:
 # drafts/
+
+# Local subscriber data
+subscribers.csv
