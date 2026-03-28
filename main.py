@@ -12,6 +12,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
 import sys
@@ -75,6 +76,68 @@ def save_draft(newsletter_md: str, title: str) -> Path:
 
     logger.info("Draft saved: %s", draft_path)
     return draft_path
+
+
+def save_archive(articles: list[dict], date_str: str | None = None) -> Path:
+    """
+    Save the raw enriched articles to archive/YYYY-MM-DD.json.
+    This builds the long-term Knowledge Graph corpus before any articles are dropped.
+    """
+    archive_dir = Path("archive")
+    archive_dir.mkdir(exist_ok=True)
+    if not date_str:
+        date_str = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+    
+    archive_path = archive_dir / f"{date_str}.json"
+    
+    with archive_path.open("w", encoding="utf-8") as f:
+        json.dump(articles, f, indent=2, ensure_ascii=False)
+        
+    return archive_path
+
+
+def update_history(articles: list[dict]) -> None:
+    """
+    Save the URLs of the final published articles to published_history.json.
+    This allows dedup.py to prevent these articles from being included again next week.
+    """
+    history_path = Path("published_history.json")
+    history: list[str] = []
+    
+    if history_path.exists():
+        try:
+            with history_path.open("r", encoding="utf-8") as f:
+                history = json.load(f)
+        except json.JSONDecodeError:
+            pass
+
+    # Normalize URLs before saving to ensure exact matches
+    import urllib.parse
+    import re
+    
+    new_urls = []
+    for art in articles:
+        url = art.get("url", "").strip().lower()
+        if not url:
+            continue
+        try:
+            parsed = urllib.parse.urlparse(url)
+            netloc = re.sub(r"^www\.", "", parsed.netloc)
+            path = parsed.path.rstrip("/")
+            clean_url = f"{parsed.scheme}://{netloc}{path}"
+            new_urls.append(clean_url)
+        except Exception:
+            new_urls.append(url)
+            
+    # Append unique new URLs
+    for url in new_urls:
+        if url not in history:
+            history.append(url)
+            
+    with history_path.open("w", encoding="utf-8") as f:
+        json.dump(history, f, indent=2)
+    
+    logger.info("Updated published_history.json with %d total URLs", len(history))
 
 
 # ---------------------------------------------------------------------------
@@ -156,6 +219,12 @@ def main() -> None:
         from normalize import normalize_articles
         articles = normalize_articles(articles, config)
 
+        # ── Stage 3.5: Archive raw enriched data ────────────────────────
+        logger.info("STAGE: Archival — saving full enriched corpus")
+        run_date = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
+        archive_path = save_archive(articles, date_str=run_date)
+        logger.info("Archived %d articles to %s", len(articles), archive_path)
+
         # ── Stage 4: Deduplicate ─────────────────────────────────────────
         # Layer 0 uses nano's duplicate_cluster_key; Layers 1–2 are URL + TF-IDF.
         logger.info("STAGE: Deduplication")
@@ -227,6 +296,12 @@ def main() -> None:
             "Delivery complete: %d/%d sent (%d failures)",
             result["success"], result["total"], result["failed"],
         )
+        
+        # ── Stage 11: Update History ─────────────────────────────────────
+        # Only add to history if we're not in dry-run mode
+        if not args.dry_run:
+            logger.info("STAGE: Updating history for cross-week deduplication")
+            update_history(articles)
 
         logger.info("=" * 60)
         logger.info("Pipeline finished successfully.")

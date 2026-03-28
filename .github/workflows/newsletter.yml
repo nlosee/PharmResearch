@@ -82,11 +82,11 @@ jobs:
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then MODE="dry-run"; fi
           echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') — Newsletter ${MODE} (passes: ${{ github.event.inputs.passes || '3' }})" >> generation_log.txt
 
-      # Commit the archived draft + log for audit trail
-      - name: Commit draft and log
+      # Commit the archived draft, raw data, history, and log for audit trail
+      - name: Commit pipeline artifacts
         uses: stefanzweifel/git-auto-commit-action@v6
         with:
           commit_message: "📬 Newsletter sent — $(date -u '+%Y-%m-%d')"
-          file_pattern: "drafts/ generation_log.txt"
+          file_pattern: "drafts/ archive/ generation_log.txt published_history.json"
           commit_user_name: "Pharma Pulse Bot"
           commit_user_email: "actions@github.com"

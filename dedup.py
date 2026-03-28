@@ -14,9 +14,11 @@ Three-layer deduplication pipeline:
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 import urllib.parse
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -95,6 +97,41 @@ def _dedup_by_cluster_key(articles: list[dict[str, Any]]) -> list[dict[str, Any]
             survivor_urls.discard(url)   # avoid double-adding
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# Layer 0.5 — Cross-week history dedup
+# ---------------------------------------------------------------------------
+
+def _dedup_by_history(articles: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    Remove articles whose normalised URLs are already in published_history.json.
+    This prevents articles that were published in previous weeks from reappearing.
+    """
+    history_path = Path("published_history.json")
+    if not history_path.exists():
+        return articles
+
+    try:
+        with history_path.open("r", encoding="utf-8") as f:
+            history = set(json.load(f))
+    except (json.JSONDecodeError, ValueError):
+        logger.warning("Failed to parse published_history.json, skipping history dedup.")
+        return articles
+
+    if not history:
+        return articles
+
+    survivors: list[dict[str, Any]] = []
+    
+    # We use the exact same normalization as Layer 1 (URL dedup)
+    for article in articles:
+        url = article.get("url", "")
+        # The history json contains normalized URLs directly
+        if _normalize_url(url) not in history:
+            survivors.append(article)
+            
+    return survivors
 
 
 # ---------------------------------------------------------------------------
@@ -221,9 +258,18 @@ def deduplicate(
             original_count, len(after_cluster), cluster_removed,
         )
 
+    # Layer 0.5 — History (cross-week deduplication)
+    after_history = _dedup_by_history(after_cluster)
+    history_removed = len(after_cluster) - len(after_history)
+    if history_removed:
+        logger.info(
+            "History dedup: %d → %d (%d previous-week duplicates removed)",
+            len(after_cluster), len(after_history), history_removed,
+        )
+
     # Layer 1 — URL
-    after_url = _dedup_by_url(after_cluster)
-    url_removed = len(after_cluster) - len(after_url)
+    after_url = _dedup_by_url(after_history)
+    url_removed = len(after_history) - len(after_url)
     logger.info(
         "URL dedup: %d → %d (%d duplicates removed)",
         len(after_cluster), len(after_url), url_removed,
