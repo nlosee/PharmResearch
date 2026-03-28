@@ -1,0 +1,95 @@
+name: "Pharma Regulatory Pulse — Resend Latest Draft"
+
+# Manual-only workflow: picks the most recent draft from drafts/ and sends it.
+# Use this to re-send or retry delivery after the main newsletter workflow has
+# already generated a draft.
+
+on:
+  workflow_dispatch:
+    inputs:
+      draft_date:
+        description: 'Draft date to send (YYYY-MM-DD). Leave blank for most recent.'
+        required: false
+        default: ''
+        type: string
+      dry_run:
+        description: 'Dry run — format to HTML but do not send emails'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  send-draft:
+    name: Send Draft Newsletter
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Create subscribers list
+        run: echo "${{ secrets.SUBSCRIBERS_CSV }}" > subscribers.csv
+
+      - name: Find draft to send
+        id: draft
+        run: |
+          DATE="${{ github.event.inputs.draft_date }}"
+          if [ -n "$DATE" ]; then
+            DRAFT_PATH="drafts/${DATE}.md"
+          else
+            # Pick the most recent draft by filename (YYYY-MM-DD.md sorts naturally)
+            DRAFT_PATH=$(ls drafts/*.md 2>/dev/null | sort -r | head -n1)
+          fi
+
+          if [ -z "$DRAFT_PATH" ] || [ ! -f "$DRAFT_PATH" ]; then
+            echo "❌ No draft found."
+            echo "Available drafts:"
+            ls drafts/ 2>/dev/null || echo "  (none)"
+            exit 1
+          fi
+
+          echo "📄 Sending draft: $DRAFT_PATH"
+          echo "draft_path=$DRAFT_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Send newsletter from draft
+        run: |
+          FLAGS=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            FLAGS="--dry-run"
+            echo "DRY RUN — HTML will be generated but not sent."
+          fi
+          python send_draft.py "${{ steps.draft.outputs.draft_path }}" $FLAGS
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          SMTP_HOST: smtp.gmail.com
+          SMTP_PORT: "587"
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+
+      - name: Update log after send
+        run: |
+          MODE="resent"
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then MODE="dry-run"; fi
+          echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') — ${MODE}: ${{ steps.draft.outputs.draft_path }}" >> generation_log.txt
+
+      - name: Commit send log
+        uses: stefanzweifel/git-auto-commit-action@v6
+        with:
+          commit_message: "📬 Newsletter resent — $(date -u '+%Y-%m-%d')"
+          file_pattern: "generation_log.txt"
+          commit_user_name: "Pharma Pulse Bot"
+          commit_user_email: "actions@github.com"
