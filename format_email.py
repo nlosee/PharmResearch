@@ -466,6 +466,7 @@ def _build_mjml(
     newsletter_config: dict,
     date_str: str,
     article_count: int = 0,
+    guideline_count: int = 0,
 ) -> str:
     title: str = newsletter_config.get("title", "Pharma Regulatory Pulse")
     subtitle: str = newsletter_config.get("subtitle", "Your Weekly Briefing")
@@ -474,10 +475,15 @@ def _build_mjml(
     # ── Summary banner (above hero) ──────────────────────────────────────────
     summary_text = ""
     if article_count > 0:
+        guideline_note = ""
+        if guideline_count > 0:
+            guideline_note = (
+                f" · <strong>{guideline_count} guideline/guidance "
+                f"{'change' if guideline_count == 1 else 'changes'}</strong> detected"
+            )
         summary_text = (
             f"This edition synthesized <strong>{article_count} articles</strong> "
-            f"across 14 disease and condition areas from FDA, EMA, ICH, "
-            f"ClinicalTrials.gov, and industry sources."
+            f"across 14 disease and condition areas{guideline_note}."
         )
     summary_section = f"""
     <!-- ===== ARTICLE COUNT SUMMARY ===== -->
@@ -659,6 +665,7 @@ def _fallback_html(
     body_html: str,
     newsletter_config: dict,
     date_str: str,
+    guideline_count: int = 0,
 ) -> str:
     title = newsletter_config.get("title", "Pharma Regulatory Pulse")
     year = date.today().year
@@ -694,6 +701,7 @@ a{{color:{BRAND_ACCENT};}}
 <body><div class="wrap">
 <div class="hdr"><small style="letter-spacing:3px;font-size:11px;color:{BRAND_RULE};">PHARMACEUTICAL REGULATORY INTELLIGENCE</small>
 <h1>{title.upper()}</h1><small>Week of {date_str}</small></div>
+{f'<div style="background:{BRAND_LIGHT_BG};padding:10px 18px;text-align:center;font-size:14px;color:{BRAND_BLUE};">{guideline_count} guideline/guidance change{"" if guideline_count == 1 else "s"} detected this week</div>' if guideline_count > 0 else ''}
 {hero}
 <div class="body">{body_html}</div>
 <div class="disc">⚠️ {DISCLAIMER}</div>
@@ -732,18 +740,21 @@ def format_newsletter_html(
 
     # Build URL → formatted publication date lookup from the articles list
     url_to_date: dict[str, str] = {}
+    guideline_count = 0
     if articles:
         for art in articles:
             url = art.get("url", "")
             raw_date = art.get("published_date", "")
             if url and raw_date:
                 url_to_date[url] = raw_date
+            if art.get("_guideline_boost"):
+                guideline_count += 1
 
     spotlight_title, spotlight_body, remaining_md = _extract_spotlight(newsletter_md)
     body_html = _md_to_html(remaining_md, url_to_date=url_to_date)
     mjml_source = _build_mjml(
         spotlight_title, spotlight_body, body_html,
-        newsletter_config, date_str, article_count,
+        newsletter_config, date_str, article_count, guideline_count,
     )
 
     try:
@@ -757,5 +768,5 @@ def format_newsletter_html(
         logger.error("MJML rendering failed: %s — falling back to plain HTML", exc)
         return _fallback_html(
             spotlight_title, spotlight_body, body_html,
-            newsletter_config, date_str,
+            newsletter_config, date_str, guideline_count,
         )
