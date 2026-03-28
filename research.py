@@ -40,12 +40,24 @@ def _fetch_with_retry(
     headers: dict[str, str] | None = None,
     timeout: int = 15,
     max_attempts: int = 3,
+    no_results_ok: bool = False,
 ) -> requests.Response | None:
-    """GET with exponential backoff (2s → 4s → 8s)."""
+    """GET with exponential backoff (2s → 4s → 8s).
+
+    Args:
+        no_results_ok: When True, HTTP 404 is treated as "zero results" and
+            returns None immediately without retrying (e.g. openFDA returns
+            404 when a date-range query finds no matching records).
+    """
     delays = [2, 4, 8]
     for attempt, delay in enumerate(delays[:max_attempts], start=1):
         try:
             resp = requests.get(url, params=params, headers=headers, timeout=timeout)
+            # openFDA returns 404 JSON when a query matches zero records.
+            # Treat that as "no results" rather than a retryable error.
+            if no_results_ok and resp.status_code == 404:
+                logger.debug("No results (404) for %s — query returned empty set", url)
+                return None
             resp.raise_for_status()
             return resp
         except requests.RequestException as exc:
@@ -307,15 +319,30 @@ def ingest_google_news(config: dict) -> list[dict[str, str]]:
 # ---------------------------------------------------------------------------
 
 def ingest_openfda(config: dict) -> list[dict[str, str]]:
-    """Pull recent enforcement actions and label changes from openFDA."""
+    """Pull recent enforcement actions and label changes from openFDA.
+
+    Key API notes:
+    - Date range syntax: field:[YYYYMMDD TO YYYYMMDD] — spaces around TO, NOT +TO+.
+      The requests library URL-encodes spaces as '+', which is what openFDA expects.
+      Using literal '+' in the Python string causes requests to encode them as '%2B',
+      which openFDA receives as literal plus signs → invalid Lucene range → 500 error.
+    - openFDA returns HTTP 404 (not 200 with empty list) when a query has zero results.
+      We pass no_results_ok=True so 404 is treated as "no data" without retrying.
+    - sort= is omitted: report_date is not reliably sortable across all openFDA clusters.
+      Results default to relevance order; we sort by pub_date downstream in score.py.
+    - Enforcement uses a 30-day lookback: FDA batches enforcement reports weekly,
+      so a 7-day window frequently returns zero results.
+    """
     if not config.get("sources", {}).get("openfda", False):
         return []
 
     api_key = os.getenv("OPENFDA_API_KEY", "")
     base_url = os.getenv("OPENFDA_BASE_URL", "https://api.fda.gov")
-    cutoff = _cutoff_dt()
-    cutoff_str = cutoff.strftime("%Y%m%d")
     today_str = datetime.now(tz=timezone.utc).strftime("%Y%m%d")
+    # Enforcement data is batched weekly by FDA — use 30-day window to avoid empty results
+    cutoff_enforcement = (datetime.now(tz=timezone.utc) - timedelta(days=30)).strftime("%Y%m%d")
+    # Label changes can be narrower
+    cutoff_label = _cutoff_dt().strftime("%Y%m%d")
     all_articles: list[dict[str, str]] = []
 
     searches = config.get("sources", {}).get("openfda_searches", [
@@ -327,20 +354,20 @@ def ingest_openfda(config: dict) -> list[dict[str, str]]:
         description = search.get("description", endpoint)
         url = f"{base_url}/{endpoint}.json"
 
-        params: dict[str, Any] = {
-            "limit": 10,
-            "sort": "report_date:desc",
-        }
+        params: dict[str, Any] = {"limit": 10}
         if api_key:
             params["api_key"] = api_key
 
-        # Date filter varies by endpoint — use today as upper bound (99999999 causes 500)
+        # IMPORTANT: use spaces around TO, NOT literal '+'.
+        # requests encodes spaces as '+' in the URL → openFDA receives valid Lucene syntax.
+        # Literal '+' in Python string → requests encodes as '%2B' → server gets literal
+        # '+TO+' → Lucene parse error → HTTP 500.
         if "enforcement" in endpoint:
-            params["search"] = f"report_date:[{cutoff_str}+TO+{today_str}]"
+            params["search"] = f"report_date:[{cutoff_enforcement} TO {today_str}]"
         elif "label" in endpoint:
-            params["search"] = f"effective_time:[{cutoff_str}+TO+{today_str}]"
+            params["search"] = f"effective_time:[{cutoff_label} TO {today_str}]"
 
-        resp = _fetch_with_retry(url, params=params)
+        resp = _fetch_with_retry(url, params=params, no_results_ok=True)
         if resp is None:
             continue
 
