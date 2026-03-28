@@ -40,8 +40,10 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Create subscribers list
-        run: echo "${{ secrets.SUBSCRIBERS_CSV }}" > subscribers.csv
+      - name: Fetch private sheets data (Subscribers & Social Roster)
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: python fetch_sheets.py
 
       - name: Find draft to send
         id: draft

@@ -63,7 +63,7 @@ newsletter:
       - "gastrointestinal IBD Crohn colitis IBS hepatitis GERD clinical trial FDA regulatory"
       - "gastrointestinal IBD Crohn hepatitis GERD FDA EMA guideline guidance pharmaceutical"
 
-  max_articles_per_topic: 3    # 14 categories × 2 topics × 3 = 84 max before dedup
+  max_articles_per_topic: 5    # 14 categories × 2 topics × 3 = 84 max before dedup
   min_articles_to_publish: 3   # Abort cleanly if fewer than this survive dedup
 
   tone: >
@@ -198,11 +198,25 @@ scoring:
 
 email:
   provider: "smtp"                      # Using Gmail SMTP for test — no domain verification needed
-  from: "nicklosee.nl@gmail.com"
-  reply_to: "nicklosee.nl@gmail.com"
+  # Email addresses are hidden here for privacy.
+  # The pipeline will automatically use the SMTP_USER environment variable (from secrets)
+  # as both the 'from' and 'reply_to' address.
   subject_template: "Pharma Regulatory Pulse — Week of {date}"
   recipients_csv: "subscribers.csv"
 
   # SMTP settings — credentials loaded from SMTP_* env vars in .env
   smtp_host: "smtp.gmail.com"
   smtp_port: 587
+
+# ==============================================================================
+# 5. SOCIAL LISTENING INGESTION (PHASE 2)
+# ==============================================================================
+social_listening:
+  enabled: false  # Set to true when the Apify integration is built
+  
+  # Both your Social Roster and your Subscribers are now pulled privately
+  # from the exact same Google Sheet workbook using a Service Account.
+  # Ensure your workbook has two tabs:
+  #   1. "Subscribers" (Columns: email, name)
+  #   2. "Social_Roster" (Columns: platform, handle)
+  google_sheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms" # Replace with your Sheet ID
