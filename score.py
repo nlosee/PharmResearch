@@ -18,6 +18,11 @@ Two-path scoring depending on whether gpt-5.4-nano normalization ran:
     source_authority (0–5) + recency (0–2) + keywords (0–5) + completeness (0–2)
     → raw max ≈ 14, normalised to 0–10.
 
+  GUIDELINE BOOST (+2.0):
+    Articles identified as guideline/guidance updates receive a +2.0 bonus
+    on their final score (both paths). This ensures guideline changes are
+    prioritised above clinical trial and general news articles.
+
 Output: articles sorted by score descending, with 'impact_score' field added.
         Articles below the configured minimum threshold are dropped.
 """
@@ -78,6 +83,31 @@ TIER_2_KEYWORDS = [
 
 _T1_PATTERNS = [re.compile(kw, re.IGNORECASE) for kw in TIER_1_KEYWORDS]
 _T2_PATTERNS = [re.compile(kw, re.IGNORECASE) for kw in TIER_2_KEYWORDS]
+
+# ---------------------------------------------------------------------------
+# Guideline detection — articles matching these get a score boost
+# ---------------------------------------------------------------------------
+
+_GUIDELINE_PATTERNS = [re.compile(p, re.IGNORECASE) for p in [
+    r"\bguideline\b", r"\bguidance\b", r"\bguidance for industry\b",
+    r"\bdraft guidance\b", r"\bfinal guidance\b", r"\brecommendation update\b",
+    r"\bpractice guideline\b", r"\bclinical practice\b",
+    r"\bconsensus statement\b", r"\bposition statement\b",
+    r"\bstandard of care\b", r"\btreatment protocol\b",
+    r"\bICH [A-Z]\d+\b", r"\bdocket no\b",
+]]
+
+GUIDELINE_BOOST = 2.0   # added to final score for guideline articles
+
+
+def _is_guideline_content(article: dict[str, Any]) -> bool:
+    """Return True if the article appears to be a guideline or guidance update."""
+    text = (
+        f"{article.get('title', '')} {article.get('content', '')} "
+        f"{article.get('source_name', '')}"
+    )
+    return any(pat.search(text) for pat in _GUIDELINE_PATTERNS)
+
 
 # ---------------------------------------------------------------------------
 # Scoring logic
@@ -192,9 +222,15 @@ def score_article(article: dict[str, Any]) -> dict[str, Any]:
         raw        = authority + recency + kw_score + completeness  # max ≈ 14
         normalised = round(min(raw / 14.0 * 10.0, 10.0), 2)
 
+    # ── Guideline boost ──────────────────────────────────────────────────
+    is_guideline = _is_guideline_content(article)
+    if is_guideline:
+        normalised = round(min(normalised + GUIDELINE_BOOST, 10.0), 2)
+
     article["impact_score"]    = normalised
     article["matched_keywords"] = matched_kws[:5]
     article["_score_path"]     = "nano" if article.get("_normalized") else "heuristic"
+    article["_guideline_boost"] = is_guideline
     return article
 
 
