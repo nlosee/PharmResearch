@@ -70,6 +70,10 @@ jobs:
           RESEND_API_KEY:  ${{ secrets.RESEND_API_KEY }}
           OPENFDA_API_KEY: ${{ secrets.OPENFDA_API_KEY }}
           PUBMED_API_KEY:  ${{ secrets.PUBMED_API_KEY }}
+          SMTP_HOST:       smtp.gmail.com
+          SMTP_PORT:       "587"
+          SMTP_USER:       ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD:   ${{ secrets.SMTP_PASSWORD }}
 
       # Update the generation log — prevents GitHub 60-day inactivity auto-disable
       - name: Update generation log
