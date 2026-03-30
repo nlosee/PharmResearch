@@ -55,7 +55,8 @@ def _load_subscribers(csv_path: str) -> list[dict[str, str]]:
             name = row.get("name", "").strip()
             if email and "@" in email:
                 subscribers.append({"email": email, "name": name})
-            else:
+            elif email or name:
+                # Only warn if the row isn't just completely empty
                 logger.warning("Skipping invalid subscriber row: %s", row)
 
     logger.info("Loaded %d subscribers from %s", len(subscribers), csv_path)

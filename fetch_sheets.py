@@ -62,6 +62,9 @@ def main():
     try:
         subscribers_sheet = workbook.worksheet("Subscribers")
         records = subscribers_sheet.get_all_records()
+        # Filter out empty rows (where email is blank)
+        records = [r for r in records if r.get("email", "").strip()]
+        
         if records:
             with open("subscribers.csv", "w", newline="", encoding="utf-8") as f:
                 writer = csv.DictWriter(f, fieldnames=records[0].keys())
@@ -69,7 +72,7 @@ def main():
                 writer.writerows(records)
             logger.info(f"Downloaded {len(records)} subscribers to subscribers.csv")
         else:
-            logger.warning("Subscribers sheet is empty.")
+            logger.warning("Subscribers sheet is empty or only contains blank rows.")
     except gspread.exceptions.WorksheetNotFound:
         logger.warning(f"Worksheet named 'Subscribers' not found in workbook '{workbook.title}'. Skipping.")
 
@@ -77,12 +80,15 @@ def main():
     try:
         social_sheet = workbook.worksheet("Social_Roster")
         records = social_sheet.get_all_records()
+        # Filter out empty rows (where handle is blank)
+        records = [r for r in records if r.get("handle", r.get("Handle/Hashtag", "")).strip()]
+        
         if records:
             with open("social_roster.json", "w", encoding="utf-8") as f:
                 json.dump(records, f, indent=2)
             logger.info(f"Downloaded {len(records)} social roster accounts to social_roster.json")
         else:
-            logger.warning("Social_Roster sheet is empty.")
+            logger.warning("Social_Roster sheet is empty or only contains blank rows.")
     except gspread.exceptions.WorksheetNotFound:
         logger.warning(f"Worksheet named 'Social_Roster' not found in workbook '{workbook.title}'. Skipping.")
 
