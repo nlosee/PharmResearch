@@ -55,7 +55,9 @@ def main():
         logger.info(f"Successfully opened workbook: {workbook.title}")
     except Exception as e:
         logger.error(f"Failed to open Google Sheet by ID '{sheet_id}'. "
-                     f"Did you share the sheet with the Service Account email address? Error: {e}")
+                     f"Exception type: {type(e).__name__}. Detail: {repr(e)}")
+        logger.error("Common causes: (1) Google Sheets API not enabled in Cloud Console, "
+                     "(2) Google Drive API not enabled, (3) sheet not shared with service account email.")
         sys.exit(1)
 
     # 1. Fetch Subscribers
