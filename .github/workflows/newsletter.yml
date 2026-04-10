@@ -85,6 +85,9 @@ jobs:
           echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') — Newsletter ${MODE} (passes: ${{ github.event.inputs.passes || '3' }})" >> generation_log.txt
 
       # Commit the archived draft, raw data, history, and log for audit trail
+      - name: Pull latest before committing artifacts
+        run: git pull --rebase origin main
+
       - name: Commit pipeline artifacts
         uses: stefanzweifel/git-auto-commit-action@v6
         with:
