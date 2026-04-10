@@ -89,9 +89,11 @@ jobs:
           echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') — ${MODE}: ${{ steps.draft.outputs.draft_path }}" >> generation_log.txt
 
       - name: Commit send log
-        uses: stefanzweifel/git-auto-commit-action@v6
-        with:
-          commit_message: "📬 Newsletter resent — $(date -u '+%Y-%m-%d')"
-          file_pattern: "generation_log.txt"
-          commit_user_name: "Pharma Pulse Bot"
-          commit_user_email: "actions@github.com"
+        run: |
+          git config user.name "Pharma Pulse Bot"
+          git config user.email "actions@github.com"
+          git add generation_log.txt
+          git diff --staged --quiet && echo "No changes to commit" && exit 0
+          git commit -m "📬 Newsletter resent — $(date -u '+%Y-%m-%d')"
+          git pull --rebase origin main
+          git push origin main
