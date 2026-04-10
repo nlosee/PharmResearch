@@ -219,4 +219,4 @@ social_listening:
   # Ensure your workbook has two tabs:
   #   1. "Subscribers" (Columns: email, name)
   #   2. "Social_Roster" (Columns: platform, handle)
-  google_sheet_id: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms" # Replace with your Sheet ID
+  google_sheet_id: "1LQ0twSOzlIURBez8zSBGdEJ6MvASvsJ3DdqOeAOouWk"

@@ -31,8 +31,8 @@ def main():
     config = load_config()
     sheet_id = config.get("social_listening", {}).get("google_sheet_id")
     
-    if not sheet_id or sheet_id == "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms":
-        logger.error("No valid google_sheet_id found in config.yaml. Please set it to your real Spreadsheet ID.")
+    if not sheet_id:
+        logger.error("No google_sheet_id found in config.yaml.")
         sys.exit(1)
 
     credentials_json = os.getenv("GOOGLE_CREDENTIALS")
