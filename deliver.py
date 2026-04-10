@@ -29,6 +29,18 @@ logger = logging.getLogger(__name__)
 SEND_INTERVAL_SECONDS = 0.5   # 2 emails per second
 
 
+def _resolve_from_addr(email_config: dict) -> str:
+    return (
+        email_config.get("from")
+        or os.getenv("SMTP_USER", "")
+        or "newsletter@yourdomain.com"
+    )
+
+
+def _resolve_reply_to(email_config: dict, from_addr: str) -> str:
+    return email_config.get("reply_to") or os.getenv("SMTP_USER", "") or from_addr
+
+
 # ---------------------------------------------------------------------------
 # Subscriber list loader
 # ---------------------------------------------------------------------------
@@ -110,13 +122,15 @@ def _send_via_resend(
     resend.api_key = api_key
 
     try:
+        from_addr = _resolve_from_addr(email_config)
+        reply_to = _resolve_reply_to(email_config, from_addr)
         params: Any = {
-            "from": email_config.get("from", "newsletter@yourdomain.com"),
+            "from": from_addr,
             "to": [subscriber["email"]],
             "subject": subject,
             "html": html,
             "text": plain_text,
-            "reply_to": email_config.get("reply_to", ""),
+            "reply_to": reply_to,
         }
         resend.Emails.send(params)
         return True
@@ -150,7 +164,8 @@ def _send_via_smtp(
     smtp_port = int(os.getenv("SMTP_PORT") or email_config.get("smtp_port", 587))
     smtp_user = os.getenv("SMTP_USER", "")
     smtp_password = os.getenv("SMTP_PASSWORD", "")
-    from_addr = email_config.get("from", smtp_user)
+    from_addr = _resolve_from_addr(email_config)
+    reply_to = _resolve_reply_to(email_config, from_addr)
 
     if not smtp_host:
         logger.error("SMTP_HOST not configured")
@@ -161,7 +176,7 @@ def _send_via_smtp(
         msg["Subject"] = subject
         msg["From"] = from_addr
         msg["To"] = subscriber["email"]
-        msg["Reply-To"] = email_config.get("reply_to", from_addr)
+        msg["Reply-To"] = reply_to
 
         msg.attach(MIMEText(plain_text, "plain", "utf-8"))
         msg.attach(MIMEText(html, "html", "utf-8"))

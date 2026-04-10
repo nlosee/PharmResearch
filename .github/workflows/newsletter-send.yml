@@ -18,6 +18,10 @@ on:
         default: false
         type: boolean
 
+concurrency:
+  group: pharmresearch-newsletter-main
+  cancel-in-progress: false
+
 jobs:
   send-draft:
     name: Send Draft Newsletter
@@ -30,6 +34,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -43,6 +49,7 @@ jobs:
       - name: Fetch private sheets data (Subscribers & Social Roster)
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+          SUBSCRIBERS_CSV: ${{ secrets.SUBSCRIBERS_CSV }}
         run: python fetch_sheets.py
 
       - name: Find draft to send
@@ -95,5 +102,14 @@ jobs:
           git add generation_log.txt
           git diff --staged --quiet && echo "No changes to commit" && exit 0
           git commit -m "📬 Newsletter resent — $(date -u '+%Y-%m-%d')"
-          git pull --rebase origin main
-          git push origin main
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Push failed on attempt $attempt, retrying after a fresh fetch..."
+            sleep 5
+          done
+          echo "Unable to push after 3 attempts."
+          exit 1
