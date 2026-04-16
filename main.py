@@ -96,6 +96,25 @@ def save_archive(articles: list[dict], date_str: str | None = None) -> Path:
     return archive_path
 
 
+def save_ingest_bundle(articles: list[dict], archive_path: Path, date_str: str) -> Path | None:
+    """Persist a KB ingest bundle alongside the newsletter archive artifacts.
+    Skipped silently when the knowledge_base module is not installed (e.g. on GitHub Actions)."""
+    try:
+        from knowledge_base.ingest.bundle import build_ingest_bundle_items, emit_ingest_bundle
+    except ImportError:
+        return None
+
+    bundle_dir = Path("artifacts") / "knowledge_base"
+    bundle_path = bundle_dir / f"{date_str}.ingest_bundle.jsonl"
+    items = build_ingest_bundle_items(
+        articles,
+        archive_path=str(archive_path),
+        run_date=date_str,
+    )
+    emit_ingest_bundle(bundle_path, items)
+    return bundle_path
+
+
 def update_history(articles: list[dict]) -> None:
     """
     Save the URLs of the final published articles to published_history.json.
@@ -224,6 +243,9 @@ def main() -> None:
         run_date = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d")
         archive_path = save_archive(articles, date_str=run_date)
         logger.info("Archived %d articles to %s", len(articles), archive_path)
+        bundle_path = save_ingest_bundle(articles, archive_path, run_date)
+        if bundle_path:
+            logger.info("Saved KB ingest bundle to %s", bundle_path)
 
         # ── Stage 4: Deduplicate ─────────────────────────────────────────
         # Layer 0 uses nano's duplicate_cluster_key; Layers 1–2 are URL + TF-IDF.
