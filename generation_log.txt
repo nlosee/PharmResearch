@@ -4,3 +4,4 @@
 2026-04-10T06:58:47Z — Newsletter sent (passes: 2)
 2026-04-10T07:15:47Z — resent: drafts/2026-04-10.md
 2026-04-13T15:27:44Z — Newsletter sent (passes: 3)
+2026-04-20T15:30:35Z — Newsletter sent (passes: 3)
