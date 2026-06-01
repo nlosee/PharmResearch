@@ -9,3 +9,4 @@
 2026-05-04T16:16:07Z — Newsletter sent (passes: 3)
 2026-05-11T16:46:45Z — Newsletter sent (passes: 3)
 2026-05-25T16:34:51Z — Newsletter sent (passes: 3)
+2026-06-01T19:31:06Z — Newsletter sent (passes: 3)
